@@ -1,9 +1,10 @@
 require("dotenv").config();
 const express = require("express");
-const cors    = require("cors");
+const cors = require("cors");
 const { ethers } = require("ethers");
 const { startListener } = require("./listener");
 const {
+  initDB,
   upsertProfile,
   getProfile,
   upsertContent,
@@ -13,7 +14,7 @@ const {
   getParticipantRoasts,
 } = require("./db");
 
-const app  = express();
+const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors());
@@ -29,13 +30,18 @@ app.get("/health", (_req, res) => res.json({ ok: true }));
  * GET /profile/:address
  * Returns profile for a wallet address. 200 with defaults if not set yet.
  */
-app.get("/profile/:address", (req, res) => {
-  const address = req.params.address.toLowerCase();
-  const profile = getProfile.get(address);
-  if (!profile) {
-    return res.json({ address, username: "", avatar_url: "", bio: "" });
+app.get("/profile/:address", async (req, res) => {
+  try {
+    const address = req.params.address.toLowerCase();
+    const profile = await getProfile(address);
+    if (!profile) {
+      return res.json({ address, username: "", avatar_url: "", bio: "" });
+    }
+    res.json(profile);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal Server Error" });
   }
-  res.json(profile);
 });
 
 /**
@@ -43,7 +49,7 @@ app.get("/profile/:address", (req, res) => {
  * Body: { address, username, avatar_url?, bio? }
  * Upserts profile. No auth in V1 — wallet address is identity.
  */
-app.post("/profile", (req, res) => {
+app.post("/profile", async (req, res) => {
   const { address, username, avatar_url = "", bio = "" } = req.body;
 
   if (!address || !ethers.isAddress(address)) {
@@ -56,14 +62,18 @@ app.post("/profile", (req, res) => {
     return res.status(400).json({ error: "Username max 32 chars" });
   }
 
-  upsertProfile.run({
-    address:    address.toLowerCase(),
-    username:   username.trim(),
-    avatar_url: avatar_url.slice(0, 200),
-    bio:        bio.slice(0, 160),
-  });
-
-  res.json({ ok: true });
+  try {
+    await upsertProfile({
+      address: address.toLowerCase(),
+      username: username.trim(),
+      avatar_url: avatar_url.slice(0, 200),
+      bio: bio.slice(0, 160),
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
 
 // ─── Roast Content ───────────────────────────────────────────────────────────
@@ -73,7 +83,7 @@ app.post("/profile", (req, res) => {
  * Body: { author, content }
  * Stores the actual roast text off-chain. One per address per roast.
  */
-app.post("/roast/:roastId/content", (req, res) => {
+app.post("/roast/:roastId/content", async (req, res) => {
   const roastId = parseInt(req.params.roastId, 10);
   const { author, content } = req.body;
 
@@ -90,26 +100,35 @@ app.post("/roast/:roastId/content", (req, res) => {
     return res.status(400).json({ error: "Content max 500 chars" });
   }
 
-  upsertContent.run({
-    roast_id: roastId,
-    author:   author.toLowerCase(),
-    content:  content.trim(),
-  });
-
-  res.json({ ok: true });
+  try {
+    await upsertContent({
+      roast_id: roastId,
+      author: author.toLowerCase(),
+      content: content.trim(),
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
 
 /**
  * GET /roast/:roastId/content
  * Returns all roast submissions for an arena, joined with profiles.
  */
-app.get("/roast/:roastId/content", (req, res) => {
+app.get("/roast/:roastId/content", async (req, res) => {
   const roastId = parseInt(req.params.roastId, 10);
   if (isNaN(roastId) || roastId < 0) {
     return res.status(400).json({ error: "Invalid roast ID" });
   }
-  const rows = getContentForRoast.all(roastId);
-  res.json(rows);
+  try {
+    const rows = await getContentForRoast(roastId);
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
 
 // ─── Roast Index ─────────────────────────────────────────────────────────────
@@ -118,24 +137,34 @@ app.get("/roast/:roastId/content", (req, res) => {
  * GET /roasts?limit=20
  * Returns recent roasts, newest first.
  */
-app.get("/roasts", (req, res) => {
+app.get("/roasts", async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit || "20", 10), 100);
-  const rows  = getRecentRoasts.all(limit);
-  res.json(rows);
+  try {
+    const rows = await getRecentRoasts(limit);
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
 
 /**
  * GET /roast/:roastId
  * Returns a single roast from the index.
  */
-app.get("/roast/:roastId", (req, res) => {
+app.get("/roast/:roastId", async (req, res) => {
   const roastId = parseInt(req.params.roastId, 10);
   if (isNaN(roastId) || roastId < 0) {
     return res.status(400).json({ error: "Invalid roast ID" });
   }
-  const row = getRoastById.get(roastId);
-  if (!row) return res.status(404).json({ error: "Roast not found in index" });
-  res.json(row);
+  try {
+    const row = await getRoastById(roastId);
+    if (!row) return res.status(404).json({ error: "Roast not found in index" });
+    res.json(row);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
 
 // ─── User Roast History ───────────────────────────────────────────────────────
@@ -144,16 +173,28 @@ app.get("/roast/:roastId", (req, res) => {
  * GET /profile/:address/roasts
  * Returns all roasts a wallet has participated in.
  */
-app.get("/profile/:address/roasts", (req, res) => {
+app.get("/profile/:address/roasts", async (req, res) => {
   const address = req.params.address.toLowerCase();
-  const rows    = getParticipantRoasts.all(address);
-  res.json(rows);
+  try {
+    const rows = await getParticipantRoasts(address);
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`[server] RoastArena backend running on port ${PORT}`);
+
+  try {
+    await initDB();
+    console.log("[server] DB initialized successfully");
+  } catch (err) {
+    console.error("[server] DB init error:", err);
+  }
 
   const contractAddress = process.env.CONTRACT_ADDRESS;
   if (!contractAddress) {
