@@ -57,6 +57,15 @@ export const saveProfile = (data: {
 export const getUserRoasts = (address: string) =>
   request<RoastIndex[]>(`/profile/${address}/roasts`);
 
+export interface ChallengeContent {
+  roast_id: number;
+  creator: string;
+  title: string;
+  description: string;
+  media_url: string;
+  created_at: number;
+}
+
 // ─── Content ───────────────────────────────────────────────────────────────
 
 export const getRoastContent = (roastId: number) =>
@@ -66,6 +75,37 @@ export const submitContent = (roastId: number, author: string, content: string) 
   request<{ ok: boolean }>(`/roast/${roastId}/content`, {
     method: "POST",
     body: JSON.stringify({ author, content }),
+  });
+
+// ─── File Upload ───────────────────────────────────────────────────────────
+
+export const uploadMedia = async (file: File): Promise<string> => {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${BASE}/upload`, { method: "POST", body: form });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `Upload failed: HTTP ${res.status}`);
+  }
+  const { url } = await res.json();
+  return url as string;
+};
+
+// ─── Challenge Content ─────────────────────────────────────────────────────
+
+export const getChallengeContent = (roastId: number) =>
+  request<ChallengeContent | null>(`/roast/${roastId}/challenge`);
+
+export const submitChallengeContent = (
+  roastId: number,
+  creator: string,
+  title: string,
+  description: string,
+  mediaUrl: string,
+) =>
+  request<{ ok: boolean }>(`/roast/${roastId}/challenge`, {
+    method: "POST",
+    body: JSON.stringify({ creator, title, description, media_url: mediaUrl }),
   });
 
 // ─── Roast Index ───────────────────────────────────────────────────────────

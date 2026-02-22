@@ -8,7 +8,7 @@ import {
   ROAST_ARENA_ABI, CONTRACT_ADDRESS,
   RoastState, STATE_LABEL, STATE_COLOR,
 } from "@/lib/contract";
-import { getRoastContent, submitContent, type RoastContent } from "@/lib/api";
+import { getRoastContent, submitContent, getChallengeContent, type RoastContent, type ChallengeContent } from "@/lib/api";
 import { useCountdown, formatCountdown } from "@/lib/useCountdown";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -82,6 +82,7 @@ export default function ArenaPage({ params }: { params: Promise<{ id: string }> 
   const [winners, setWinners]             = useState<string[]>([]);
   const [voteCounts, setVoteCounts]       = useState<Record<string, number>>({});
   const [contents, setContents]           = useState<RoastContent[]>([]);
+  const [challengeContent, setChallengeContent] = useState<ChallengeContent | null>(null);
   const [myContent, setMyContent]         = useState("");
   const [hasJoined, setHasJoined]         = useState(false);
   const [hasVoted, setHasVoted]           = useState(false);
@@ -196,12 +197,20 @@ export default function ArenaPage({ params }: { params: Promise<{ id: string }> 
     } catch { /* backend may not be running */ }
   }, [roastId]);
 
+  const loadChallengeContent = useCallback(async () => {
+    try {
+      const data = await getChallengeContent(roastId);
+      setChallengeContent(data);
+    } catch { /* no challenge content set, or backend not running */ }
+  }, [roastId]);
+
   useEffect(() => {
     loadChainData();
     loadContent();
+    loadChallengeContent();
     const tid = setInterval(() => { loadChainData(); loadContent(); }, 4000);
     return () => clearInterval(tid);
-  }, [loadChainData, loadContent]);
+  }, [loadChainData, loadContent, loadChallengeContent]);
 
   // ─── Actions ───────────────────────────────────────────────────────────────
 
@@ -405,6 +414,40 @@ export default function ArenaPage({ params }: { params: Promise<{ id: string }> 
         <p className="text-zinc-600 text-xs mb-6">
           Roaster stake: {fmt(roast.roastStake)} · Vote stake: {fmt(roast.voteStake)}
         </p>
+
+        {/* Challenge subject — what this arena is about */}
+        {challengeContent && (
+          <div className="border border-orange-500/30 bg-orange-500/5 rounded-xl p-5 mb-6">
+            <p className="text-orange-400 text-xs uppercase tracking-widest mb-2">What we&apos;re roasting</p>
+            <h2 className="text-white font-bold text-xl mb-2">{challengeContent.title}</h2>
+            {challengeContent.description && (
+              <p className="text-zinc-400 text-sm mb-3 whitespace-pre-wrap">{challengeContent.description}</p>
+            )}
+            {challengeContent.media_url && (() => {
+              const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+              const src  = challengeContent.media_url.startsWith("/")
+                ? `${BASE}${challengeContent.media_url}`
+                : challengeContent.media_url;
+              return /\.(jpe?g|png|gif|webp|svg)(\?.*)?$/i.test(src) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={src}
+                  alt="Challenge media"
+                  className="max-h-64 rounded-lg object-contain border border-zinc-700"
+                />
+              ) : (
+                <a
+                  href={src}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-orange-400 hover:text-orange-300 text-sm underline break-all"
+                >
+                  {src}
+                </a>
+              );
+            })()}
+          </div>
+        )}
 
         {/* Pass real-time-adjusted timestamps so countdown shows actual remaining time */}
         <PhaseBanner state={storedState} openUntil={openUntilReal} voteUntil={voteUntilReal} />

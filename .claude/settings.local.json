@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /c/Users/duves/Documents/SelfLearning/Monad/roast-arena/frontend && npx tsc --noEmit 2>&1)",
+      "Bash(cd:*)",
+      "Bash(powershell.exe:*)"
+    ]
+  }
+}

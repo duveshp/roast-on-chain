@@ -5,7 +5,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import { useWallet } from "@/lib/useWallet";
 import { ROAST_ARENA_ABI, CONTRACT_ADDRESS, RoastState, STATE_LABEL, STATE_COLOR } from "@/lib/contract";
-import { getRecentRoastsFromDB, type RoastIndex } from "@/lib/api";
+import { getRecentRoastsFromDB, submitChallengeContent, uploadMedia, type RoastIndex } from "@/lib/api";
 import { useCountdown, formatCountdown } from "@/lib/useCountdown";
 
 function Countdown({ openUntil, voteUntil, state }: { openUntil: number; voteUntil: number; state: string }) {
@@ -31,9 +31,14 @@ export default function Home() {
   const [loading, setLoading]     = useState(true);
   const [creating, setCreating]   = useState(false);
   const [showForm, setShowForm]   = useState(false);
-  const [roastStake, setRoastStake] = useState("0.01");
-  const [voteStake, setVoteStake]   = useState("0.005");
-  const [error, setError]         = useState("");
+  const [roastStake, setRoastStake]       = useState("0.01");
+  const [voteStake, setVoteStake]         = useState("0.005");
+  const [challengeTitle, setChallengeTitle]   = useState("");
+  const [challengeDesc, setChallengeDesc]     = useState("");
+  const [mediaType, setMediaType]             = useState<"text" | "image">("text");
+  const [mediaFile, setMediaFile]             = useState<File | null>(null);
+  const [mediaPreview, setMediaPreview]       = useState<string | null>(null);
+  const [error, setError]                 = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -62,6 +67,10 @@ export default function Home() {
       setError("Both stake amounts must be > 0");
       return;
     }
+    if (!challengeTitle.trim()) {
+      setError("Tell everyone what they're roasting");
+      return;
+    }
 
     setCreating(true);
     setError("");
@@ -77,8 +86,23 @@ export default function Home() {
           if (parsed?.name === "RoastCreated") { roastId = parsed.args.roastId.toString(); break; }
         } catch { /* skip non-matching logs */ }
       }
-      if (roastId) window.location.href = `/arena/${roastId}`;
-      else load();
+      if (roastId) {
+        const addr = await signer.getAddress();
+        let mediaUrl = "";
+        if (mediaType === "image" && mediaFile) {
+          try { mediaUrl = await uploadMedia(mediaFile); } catch { /* non-fatal */ }
+        }
+        await submitChallengeContent(
+          parseInt(roastId),
+          addr,
+          challengeTitle.trim(),
+          challengeDesc.trim(),
+          mediaUrl,
+        ).catch(() => { /* non-fatal — arena still works without it */ });
+        window.location.href = `/arena/${roastId}`;
+      } else {
+        load();
+      }
     } catch (err: unknown) {
       setError((err as Error).message?.slice(0, 120) || "Transaction failed");
     } finally {
@@ -109,8 +133,101 @@ export default function Home() {
               + Create New Arena
             </button>
           ) : (
-            <div className="border border-zinc-700 rounded-xl p-6 w-full max-w-sm space-y-4">
-              <h3 className="text-white font-bold text-lg">Set Stake Amounts</h3>
+            <div className="border border-zinc-700 rounded-xl p-6 w-full max-w-md space-y-4">
+              <h3 className="text-white font-bold text-lg">Create Arena</h3>
+
+              <label className="block">
+                <span className="text-zinc-400 text-sm">What are we roasting? <span className="text-orange-500">*</span></span>
+                <input
+                  type="text"
+                  maxLength={100}
+                  placeholder="e.g. My NFT project, this tweet, this dev..."
+                  value={challengeTitle}
+                  onChange={(e) => setChallengeTitle(e.target.value)}
+                  className="mt-1 w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500"
+                />
+                <span className="text-zinc-600 text-xs">{challengeTitle.length}/100</span>
+              </label>
+
+              <label className="block">
+                <span className="text-zinc-400 text-sm">Context / description <span className="text-zinc-600">(optional)</span></span>
+                <textarea
+                  maxLength={500}
+                  rows={3}
+                  placeholder="Add more context for the roasters..."
+                  value={challengeDesc}
+                  onChange={(e) => setChallengeDesc(e.target.value)}
+                  className="mt-1 w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500 resize-none"
+                />
+                <span className="text-zinc-600 text-xs">{challengeDesc.length}/500</span>
+              </label>
+
+              {/* Content type toggle */}
+              <div>
+                <span className="text-zinc-400 text-sm block mb-2">Content type</span>
+                <div className="flex gap-2">
+                  {(["text", "image"] as const).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => {
+                        setMediaType(t);
+                        if (t === "text") { setMediaFile(null); setMediaPreview(null); }
+                      }}
+                      className={`flex-1 py-2 rounded-lg border text-sm font-medium capitalize transition-all ${
+                        mediaType === t
+                          ? "border-orange-500 bg-orange-500/10 text-orange-400"
+                          : "border-zinc-700 text-zinc-500 hover:border-zinc-500"
+                      }`}
+                    >
+                      {t === "text" ? "📝 Text only" : "🖼️ Image"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Image upload — only shown when mediaType === "image" */}
+              {mediaType === "image" && (
+                <div>
+                  <span className="text-zinc-400 text-sm block mb-2">Upload image</span>
+                  {mediaPreview ? (
+                    <div className="relative">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={mediaPreview}
+                        alt="Preview"
+                        className="w-full max-h-48 object-contain rounded-lg border border-zinc-700 bg-zinc-900"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => { setMediaFile(null); setMediaPreview(null); }}
+                        className="absolute top-2 right-2 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-full w-7 h-7 flex items-center justify-center text-xs border border-zinc-700"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-zinc-700 hover:border-orange-500 rounded-lg cursor-pointer bg-zinc-900 transition-colors">
+                      <span className="text-zinc-500 text-sm">Click to choose image</span>
+                      <span className="text-zinc-600 text-xs mt-1">JPEG · PNG · GIF · WebP · max 10 MB</span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/gif,image/webp"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0] ?? null;
+                          setMediaFile(f);
+                          setMediaPreview(f ? URL.createObjectURL(f) : null);
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
+              )}
+
+              <div className="border-t border-zinc-800 pt-4">
+                <p className="text-zinc-500 text-xs mb-3 uppercase tracking-widest">Stake settings</p>
+              </div>
 
               <label className="block">
                 <span className="text-zinc-400 text-sm">Roaster stake (ETH per roaster)</span>
@@ -150,7 +267,15 @@ export default function Home() {
                   {creating ? "Creating…" : "Create Arena"}
                 </button>
                 <button
-                  onClick={() => { setShowForm(false); setError(""); }}
+                  onClick={() => {
+                    setShowForm(false);
+                    setError("");
+                    setChallengeTitle("");
+                    setChallengeDesc("");
+                    setMediaType("text");
+                    setMediaFile(null);
+                    setMediaPreview(null);
+                  }}
                   className="px-4 py-2 text-zinc-400 hover:text-white border border-zinc-700 rounded-lg"
                 >
                   Cancel

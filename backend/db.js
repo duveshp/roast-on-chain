@@ -52,6 +52,20 @@ async function initDB() {
       PRIMARY KEY (roast_id, address)
     );
 
+    CREATE TABLE IF NOT EXISTS challenge_content (
+      roast_id     INTEGER PRIMARY KEY,
+      creator      TEXT NOT NULL,
+      title        TEXT NOT NULL DEFAULT '',
+      description  TEXT NOT NULL DEFAULT '',
+      media_url    TEXT NOT NULL DEFAULT '',
+      created_at   INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS listener_state (
+      key   TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_content_roast    ON roast_content(roast_id);
     CREATE INDEX IF NOT EXISTS idx_content_author   ON roast_content(author);
     CREATE INDEX IF NOT EXISTS idx_participant_addr ON participant_index(address);
@@ -98,17 +112,51 @@ async function upsertContent(data) {
   });
 }
 
-const getExistingContent = db.prepare(`
-  SELECT id FROM roast_content WHERE roast_id = ? AND author = ?
-`);
+async function getExistingContent(roast_id, author) {
+  const result = await db.execute({
+    sql: `SELECT id FROM roast_content WHERE roast_id = ? AND author = ?`,
+    args: [roast_id, author]
+  });
+  return result.rows[0] || null;
+}
 
-const getContentForRoast = db.prepare(`
-  SELECT rc.*, p.username, p.avatar_url
-  FROM roast_content rc
-  LEFT JOIN profiles p ON p.address = rc.author
-  WHERE rc.roast_id = ?
-  ORDER BY rc.created_at ASC
-`);
+async function getContentForRoast(roast_id) {
+  const result = await db.execute({
+    sql: `
+      SELECT rc.*, p.username, p.avatar_url
+      FROM roast_content rc
+      LEFT JOIN profiles p ON p.address = rc.author
+      WHERE rc.roast_id = ?
+      ORDER BY rc.created_at ASC
+    `,
+    args: [roast_id]
+  });
+  return result.rows;
+}
+
+// ─── Challenge Content Helpers ───────────────────────────────────────────────
+
+async function upsertChallengeContent(data) {
+  return await db.execute({
+    sql: `
+      INSERT INTO challenge_content (roast_id, creator, title, description, media_url)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(roast_id) DO UPDATE SET
+        title       = excluded.title,
+        description = excluded.description,
+        media_url   = excluded.media_url
+    `,
+    args: [data.roast_id, data.creator, data.title, data.description, data.media_url]
+  });
+}
+
+async function getChallengeContentById(roast_id) {
+  const result = await db.execute({
+    sql: `SELECT * FROM challenge_content WHERE roast_id = ?`,
+    args: [roast_id]
+  });
+  return result.rows[0] || null;
+}
 
 // ─── Roast Index Helpers ────────────────────────────────────────────────────
 
@@ -205,6 +253,24 @@ async function getParticipantRoasts(address) {
   return result.rows;
 }
 
+// ─── Listener State ──────────────────────────────────────────────────────────
+
+async function getListenerBlock() {
+  const result = await db.execute({
+    sql: `SELECT value FROM listener_state WHERE key = 'lastPolledBlock'`,
+    args: []
+  });
+  return result.rows[0] ? parseInt(result.rows[0].value, 10) : null;
+}
+
+async function setListenerBlock(blockNumber) {
+  return await db.execute({
+    sql: `INSERT INTO listener_state (key, value) VALUES ('lastPolledBlock', ?)
+          ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+    args: [String(blockNumber)]
+  });
+}
+
 module.exports = {
   db,
   initDB,
@@ -213,6 +279,8 @@ module.exports = {
   upsertContent,
   getExistingContent,
   getContentForRoast,
+  upsertChallengeContent,
+  getChallengeContentById,
   insertRoast,
   updateRoastSettled,
   updateRoastCancelled,
@@ -220,4 +288,6 @@ module.exports = {
   getRoastById,
   insertParticipant,
   getParticipantRoasts,
+  getListenerBlock,
+  setListenerBlock,
 };
