@@ -98,19 +98,17 @@ async function upsertContent(data) {
   });
 }
 
-async function getContentForRoast(roast_id) {
-  const result = await db.execute({
-    sql: `
-      SELECT rc.*, p.username, p.avatar_url
-      FROM roast_content rc
-      LEFT JOIN profiles p ON p.address = rc.author
-      WHERE rc.roast_id = ?
-      ORDER BY rc.created_at ASC
-    `,
-    args: [roast_id]
-  });
-  return result.rows;
-}
+const getExistingContent = db.prepare(`
+  SELECT id FROM roast_content WHERE roast_id = ? AND author = ?
+`);
+
+const getContentForRoast = db.prepare(`
+  SELECT rc.*, p.username, p.avatar_url
+  FROM roast_content rc
+  LEFT JOIN profiles p ON p.address = rc.author
+  WHERE rc.roast_id = ?
+  ORDER BY rc.created_at ASC
+`);
 
 // ─── Roast Index Helpers ────────────────────────────────────────────────────
 
@@ -213,6 +211,7 @@ module.exports = {
   upsertProfile,
   getProfile,
   upsertContent,
+  getExistingContent,
   getContentForRoast,
   insertRoast,
   updateRoastSettled,

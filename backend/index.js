@@ -8,6 +8,7 @@ const {
   upsertProfile,
   getProfile,
   upsertContent,
+  getExistingContent,
   getContentForRoast,
   getRecentRoasts,
   getRoastById,
@@ -100,17 +101,18 @@ app.post("/roast/:roastId/content", async (req, res) => {
     return res.status(400).json({ error: "Content max 500 chars" });
   }
 
-  try {
-    await upsertContent({
-      roast_id: roastId,
-      author: author.toLowerCase(),
-      content: content.trim(),
-    });
-    res.json({ ok: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Internal Server Error" });
+  const existing = getExistingContent.get(roastId, author.toLowerCase());
+  if (existing) {
+    return res.status(409).json({ error: "You have already submitted a roast for this arena" });
   }
+
+  upsertContent.run({
+    roast_id: roastId,
+    author:   author.toLowerCase(),
+    content:  content.trim(),
+  });
+
+  res.json({ ok: true });
 });
 
 /**
