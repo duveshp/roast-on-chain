@@ -1,0 +1,103 @@
+<svg width="1600" height="980" viewBox="0 0 1600 980" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="980" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F1722"/>
+      <stop offset="1" stop-color="#070C14"/>
+    </linearGradient>
+    <radialGradient id="flareA" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(260 110) rotate(13) scale(470 280)">
+      <stop stop-color="#FF6B35" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#FF6B35" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="flareB" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1290 70) rotate(154) scale(560 300)">
+      <stop stop-color="#6A93D8" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#6A93D8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#243247"/>
+      <stop offset="1" stop-color="#121B29"/>
+    </linearGradient>
+    <linearGradient id="panelSoft" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#2B3B54"/>
+      <stop offset="1" stop-color="#182434"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#FF9A3C"/>
+      <stop offset="1" stop-color="#FF6B35"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%" filterUnits="objectBoundingBox">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#020509" flood-opacity="0.55"/>
+    </filter>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%" filterUnits="objectBoundingBox">
+      <feDropShadow dx="0" dy="0" stdDeviation="7" flood-color="#FF7A38" flood-opacity="0.45"/>
+    </filter>
+    <marker id="arrow" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto">
+      <path d="M0,0 L14,7 L0,14 Z" fill="#8FA5C4"/>
+    </marker>
+    <style>
+      .title { font: 800 56px 'Segoe UI', 'Space Grotesk', sans-serif; fill: #EAF1FC; letter-spacing: 0.5px; }
+      .subtitle { font: 500 22px 'Segoe UI', sans-serif; fill: #AFC0D8; }
+      .lane { font: 700 20px 'Segoe UI', sans-serif; fill: #C9D8EC; letter-spacing: 1.2px; }
+      .step-title { font: 700 26px 'Segoe UI', sans-serif; fill: #F1F6FF; }
+      .step-body { font: 500 18px 'Segoe UI', sans-serif; fill: #AFC0D8; }
+      .small { font: 600 16px 'Segoe UI', sans-serif; fill: #8FA5C4; letter-spacing: 0.8px; }
+      .accent { fill: #FF9A3C; }
+      .pill { font: 700 16px 'Segoe UI', sans-serif; fill: #0D141F; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="980" fill="url(#bg)"/>
+  <rect width="1600" height="980" fill="url(#flareA)"/>
+  <rect width="1600" height="980" fill="url(#flareB)"/>
+
+  <text x="90" y="100" class="title">RoastArena User Flow Map</text>
+  <text x="90" y="138" class="subtitle">Stake, roast, vote, settle, and claim in one end-to-end loop.</text>
+
+  <rect x="90" y="184" width="1420" height="56" rx="16" fill="#1A2536" stroke="#31445E"/>
+  <text x="120" y="220" class="lane">ON-CHAIN FLOW (SMART CONTRACT)</text>
+
+  <rect x="90" y="274" width="340" height="160" rx="22" fill="url(#panel)" stroke="#405A78" filter="url(#shadow)"/>
+  <rect x="110" y="294" width="104" height="32" rx="16" fill="url(#accent)" filter="url(#glow)"/>
+  <text x="138" y="315" class="pill">START</text>
+  <text x="110" y="356" class="step-title">1. Connect Wallet</text>
+  <text x="110" y="388" class="step-body">User connects wallet and switches</text>
+  <text x="110" y="414" class="step-body">to Monad Testnet if needed.</text>
+
+  <rect x="480" y="274" width="340" height="160" rx="22" fill="url(#panel)" stroke="#405A78" filter="url(#shadow)"/>
+  <text x="500" y="326" class="step-title">2. Create OR Join Arena</text>
+  <text x="500" y="358" class="step-body">Creator calls createRoast and stakes.</text>
+  <text x="500" y="384" class="step-body">Others call joinRoast with roast stake.</text>
+
+  <rect x="870" y="274" width="340" height="160" rx="22" fill="url(#panel)" stroke="#405A78" filter="url(#shadow)"/>
+  <text x="890" y="326" class="step-title">3. OPEN Window</text>
+  <text x="890" y="358" class="step-body">Roasters submit content before</text>
+  <text x="890" y="384" class="step-body">openUntil deadline.</text>
+
+  <rect x="1260" y="274" width="250" height="160" rx="22" fill="url(#panel)" stroke="#405A78" filter="url(#shadow)"/>
+  <text x="1280" y="326" class="step-title">4. VOTING</text>
+  <text x="1280" y="358" class="step-body">Users vote(candidate)</text>
+  <text x="1280" y="384" class="step-body">with vote stake.</text>
+
+  <path d="M432 354 L468 354" stroke="#8FA5C4" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M822 354 L858 354" stroke="#8FA5C4" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M1212 354 L1248 354" stroke="#8FA5C4" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <rect x="250" y="500" width="480" height="172" rx="22" fill="url(#panelSoft)" stroke="#4A6586" filter="url(#shadow)"/>
+  <text x="274" y="554" class="step-title">5. Settle Arena</text>
+  <text x="274" y="586" class="step-body">Any participant or voter calls settle</text>
+  <text x="274" y="612" class="step-body">after voteUntil. Winners are fixed.</text>
+  <text x="274" y="638" class="small">States: SETTLED or CANCELLED</text>
+
+  <rect x="868" y="500" width="642" height="172" rx="22" fill="url(#panelSoft)" stroke="#4A6586" filter="url(#shadow)"/>
+  <text x="892" y="554" class="step-title">6. Claim Outcome</text>
+  <text x="892" y="586" class="step-body">Winners claimRoasterReward, correct voters claimVoterReward.</text>
+  <text x="892" y="612" class="step-body">If cancelled, participants call claimRefund.</text>
+  <text x="892" y="638" class="small">Pull-payment claims prevent reentrancy issues.</text>
+
+  <path d="M1385 434 C1450 468 1472 490 1472 526" stroke="#8FA5C4" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
+  <path d="M1260 680 C1190 760 490 760 420 680" stroke="#FF8A3B" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
+  <text x="660" y="748" class="small accent">Loop continues: users launch the next arena</text>
+
+  <rect x="90" y="792" width="1420" height="118" rx="20" fill="#121C2B" stroke="#324862"/>
+  <text x="116" y="832" class="lane">OFF-CHAIN SUPPORT (BACKEND + UI)</text>
+  <text x="116" y="866" class="step-body">Profile data, roast text/media, and arena index are stored off-chain for faster UX while staking, voting, settlement, and claims remain on-chain.</text>
+</svg>
